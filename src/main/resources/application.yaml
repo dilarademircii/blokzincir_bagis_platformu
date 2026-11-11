@@ -24,5 +24,9 @@ server:
   port: 8081
 
 jwt:
-  secret: "loXcPYSrMqYX8kKQV9McQCr1swC1r9J3"
+  secret: ${JWT_SECRET}
   expiration: 86400000
+
+blockchain:
+  rpc-url: ${BLOCKCHAIN_RPC_URL}
+  contract-address: "0x1E857D23Af68ec39a39b3336f071AA5967A6724d"

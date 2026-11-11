@@ -13,4 +13,5 @@ public interface TemelService<T> {
     List<T> tumunuGetir();
 
     void sil(Long id);
+
 }

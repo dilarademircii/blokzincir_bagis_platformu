@@ -1,3 +1,4 @@
+
 package com.proje.blokzincirbagisplatformu.model;
 
 import com.proje.blokzincirbagisplatformu.model.enums.HesapDurumu;
@@ -51,19 +52,6 @@ public class Kullanici {
     private LocalDateTime olusturmaTarihi;
 
     private LocalDateTime guncellemeTarihi;
-
-    @Column(name = "wallet_address", unique = true)
-    private String walletAddress;
-
-    @Column(name = "wallet_nonce")
-    private String walletNonce;
-
-    // Getter ve Setter'lar
-    public String getWalletAddress() { return walletAddress; }
-    public void setWalletAddress(String walletAddress) { this.walletAddress = walletAddress; }
-
-    public String getWalletNonce() { return walletNonce; }
-    public void setWalletNonce(String walletNonce) { this.walletNonce = walletNonce; }
 
     @PrePersist
     protected void onCreate() {

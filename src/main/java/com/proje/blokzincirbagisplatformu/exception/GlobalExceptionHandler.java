@@ -1,5 +1,6 @@
 package com.proje.blokzincirbagisplatformu.exception;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -18,6 +19,8 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger logger =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // -------------------------------------------------------------------------
     // Kayıt bulunamadı
@@ -72,11 +75,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<HataYaniti> genelHata(Exception ex) {
+
+        // Gerçek hatayı ve ayrıntılı hata kaydını konsola yazdırır.
+        logger.error("Beklenmeyen bir sunucu hatası oluştu:", ex);
+
         HataYaniti yanit = new HataYaniti(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "SUNUCU_HATASI",
                 "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin."
         );
+
         return ResponseEntity.internalServerError().body(yanit);
     }
 

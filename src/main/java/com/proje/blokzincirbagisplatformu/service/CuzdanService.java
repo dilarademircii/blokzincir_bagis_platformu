@@ -1,7 +1,9 @@
+
 package com.proje.blokzincirbagisplatformu.service;
 
 import com.proje.blokzincirbagisplatformu.model.Cuzdan;
 import com.proje.blokzincirbagisplatformu.model.enums.CuzdanDurumu;
+import com.proje.blokzincirbagisplatformu.dto.request.CuzdanEkleRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -10,39 +12,56 @@ import java.util.Optional;
 
 public interface CuzdanService extends TemelService<Cuzdan> {
 
-    /** Cüzdan adresi zaten kayıtlı mı? */
+    Cuzdan cuzdanEkle(Long kullaniciId, CuzdanEkleRequest request);
+
     boolean cuzdanAdresiKayitliMi(String cuzdanAdresi);
 
-    /** Cüzdan adresine göre bul (büyük/küçük harf duyarsız) */
     Optional<Cuzdan> adreseGoreBul(String cuzdanAdresi);
 
-    /** Kullanıcının tüm cüzdanları */
     List<Cuzdan> kullaniciIdIleGetir(Long kullaniciId);
 
-    /** Kullanıcının belirli durumdaki cüzdanları */
-    List<Cuzdan> kullaniciVeDurumIleGetir(Long kullaniciId, CuzdanDurumu durum);
+    List<Cuzdan> kullaniciVeDurumIleGetir(
+            Long kullaniciId,
+            CuzdanDurumu durum
+    );
 
-    /** Duruma göre sayfalı listele */
-    Page<Cuzdan> durumIleGetir(CuzdanDurumu durum, Pageable pageable);
+    Page<Cuzdan> durumIleGetir(
+            CuzdanDurumu durum,
+            Pageable pageable
+    );
 
-    /** Belirli ağdaki cüzdanlar */
-    Page<Cuzdan> agAdiIleGetir(String agAdi, Pageable pageable);
+    Page<Cuzdan> agAdiIleGetir(
+            String agAdi,
+            Pageable pageable
+    );
 
-    /** Kullanıcının belirli durumdaki cüzdanı var mı? */
-    boolean kullaniciDurumluCuzdaniVarMi(Long kullaniciId, CuzdanDurumu durum);
+    boolean kullaniciDurumluCuzdaniVarMi(
+            Long kullaniciId,
+            CuzdanDurumu durum
+    );
 
-    /** Doğrulanma tarihi olan cüzdanlar */
     Page<Cuzdan> dogrulanmisCuzdanlar(Pageable pageable);
 
-    /** Kullanıcının cüzdan sayısı */
     long kullaniciCuzdanSayisi(Long kullaniciId);
 
-    /** Ağdaki cüzdan sayısı */
     long agCuzdanSayisi(String agAdi);
 
-    /** Adres ve ağ bilgisiyle cüzdan bul */
-    Optional<Cuzdan> adresVeAgIleBul(String adres, String agAdi);
+    Optional<Cuzdan> adresVeAgIleBul(
+            String adres,
+            String agAdi
+    );
 
-    /** Cüzdan durumunu güncelle */
-    Cuzdan durumGuncelle(Long cuzdanId, CuzdanDurumu yeniDurum);
+    Cuzdan durumGuncelle(
+            Long cuzdanId,
+            CuzdanDurumu yeniDurum
+    );
+    // MetaMask doğrulaması için nonce oluşturur.
+    String nonceOlustur(String cuzdanAdresi);
+
+    // MetaMask imzasını doğrular ve başarılıysa JWT üretir.
+    String imzaDogrulaVeTokenUret(
+            String cuzdanAdresi,
+            String imzalananMesaj,
+            String imza
+    );
 }

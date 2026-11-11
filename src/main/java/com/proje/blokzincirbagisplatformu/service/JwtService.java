@@ -1,8 +1,8 @@
+
 package com.proje.blokzincirbagisplatformu.service;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,13 +19,9 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    /**
-     * Cüzdan adresi için JWT token oluşturur.
-     */
     public String generateToken(String walletAddress) {
 
         Date simdikiZaman = new Date();
-
         Date bitisZamani = new Date(
                 simdikiZaman.getTime() + expiration
         );
@@ -40,5 +36,29 @@ public class JwtService {
                 .expiration(bitisZamani)
                 .signWith(key)
                 .compact();
+    }
+
+    public String tokenIleCuzdanAdresiGetir(String token) {
+
+        SecretKey key = Keys.hmacShaKeyFor(
+                secretKey.getBytes(StandardCharsets.UTF_8)
+        );
+
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+
+    public boolean tokenGecerliMi(String token) {
+
+        try {
+            tokenIleCuzdanAdresiGetir(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

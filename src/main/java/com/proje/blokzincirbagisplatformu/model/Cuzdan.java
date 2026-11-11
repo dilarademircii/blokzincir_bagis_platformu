@@ -1,10 +1,11 @@
+
 package com.proje.blokzincirbagisplatformu.model;
 
 import com.proje.blokzincirbagisplatformu.model.enums.CuzdanDurumu;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -37,6 +38,11 @@ public class Cuzdan {
     private LocalDateTime olusturmaTarihi;
 
     private LocalDateTime dogrulamaTarihi;
+
+    @Column(length = 255)
+    private String nonce;
+
+    private LocalDateTime nonceOlusturmaTarihi;
 
     @PrePersist
     protected void onCreate() {

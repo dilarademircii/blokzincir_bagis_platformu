@@ -1,11 +1,12 @@
 
 package com.proje.blokzincirbagisplatformu.controller;
 
-import com.proje.blokzincirbagisplatformu.service.JwtService;
+import com.proje.blokzincirbagisplatformu.dto.request.WalletNonceRequest;
+import com.proje.blokzincirbagisplatformu.dto.request.WalletVerifyRequest;
 import com.proje.blokzincirbagisplatformu.security.WalletSignatureService;
+import com.proje.blokzincirbagisplatformu.service.JwtService;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,30 +29,30 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    /**
-     * 1. Adım:
-     * MetaMask cüzdan adresi için tek kullanımlık nonce üretir.
-     */
+    // 1. Adım: Cüzdan için nonce üretir.
     @PostMapping("/nonce")
     public ResponseEntity<Map<String, String>> getNonce(
             @Valid @RequestBody WalletNonceRequest request
     ) {
 
-        String nonceMessage =
-                walletSignatureService.generateNonce(
-                        request.walletAddress()
-                );
+        try {
+            String nonceMessage =
+                    walletSignatureService.generateNonce(
+                            request.walletAddress()
+                    );
 
-        return ResponseEntity.ok(
-                Map.of("message", nonceMessage)
-        );
+            return ResponseEntity.ok(
+                    Map.of("message", nonceMessage)
+            );
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
-    /**
-     * 2. Adım:
-     * MetaMask tarafından imzalanan mesajı doğrular.
-     * İmza geçerliyse JWT token üretir.
-     */
+    // 2. Adım: MetaMask imzasını doğrular ve JWT üretir.
     @PostMapping("/verify")
     public ResponseEntity<Map<String, String>> verifySignature(
             @Valid @RequestBody WalletVerifyRequest request
@@ -71,7 +72,6 @@ public class AuthController {
                     ));
         }
 
-        // İmza doğrulandıktan sonra JWT oluşturulur.
         String token = jwtService.generateToken(
                 request.walletAddress()
         );
@@ -83,33 +83,5 @@ public class AuthController {
                         "message", "Cüzdan doğrulaması başarılı."
                 )
         );
-    }
-
-    /**
-     * Nonce üretimi için istek modeli.
-     */
-    public record WalletNonceRequest(
-
-            @NotBlank(message = "Cüzdan adresi boş olamaz.")
-            String walletAddress
-
-    ) {
-    }
-
-    /**
-     * Cüzdan imzası doğrulaması için istek modeli.
-     */
-    public record WalletVerifyRequest(
-
-            @NotBlank(message = "Cüzdan adresi boş olamaz.")
-            String walletAddress,
-
-            @NotBlank(message = "İmza boş olamaz.")
-            String signature,
-
-            @NotBlank(message = "İmzalanan mesaj boş olamaz.")
-            String message
-
-    ) {
     }
 }

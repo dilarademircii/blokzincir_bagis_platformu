@@ -19,6 +19,10 @@ CREATE TABLE kurumlar (
 
 -- 2. KULLANICILAR
 
+-- =====================================================
+-- 2. KULLANICILAR
+-- =====================================================
+
 CREATE TABLE kullanicilar (
                               id BIGSERIAL PRIMARY KEY,
                               ad VARCHAR(50) NOT NULL,
@@ -32,14 +36,15 @@ CREATE TABLE kullanicilar (
                               olusturma_tarihi TIMESTAMP NOT NULL,
                               guncelleme_tarihi TIMESTAMP,
 
-                              wallet_address VARCHAR(255) UNIQUE,
-                              wallet_nonce VARCHAR(255),
-
                               CONSTRAINT fk_kullanicilar_kurum
                                   FOREIGN KEY (kurum_id) REFERENCES kurumlar(id)
 );
 
+
+-- =====================================================
 -- 3. CUZDANLAR
+-- =====================================================
+
 CREATE TABLE cuzdanlar (
                            id BIGSERIAL PRIMARY KEY,
                            cuzdan_adresi VARCHAR(42) NOT NULL UNIQUE,
@@ -48,6 +53,8 @@ CREATE TABLE cuzdanlar (
                            ag_adi VARCHAR(100),
                            olusturma_tarihi TIMESTAMP NOT NULL,
                            dogrulama_tarihi TIMESTAMP,
+                           nonce VARCHAR(255),
+                           nonce_olusturma_tarihi TIMESTAMP,
 
                            CONSTRAINT fk_cuzdan_kullanici
                                FOREIGN KEY (kullanici_id) REFERENCES kullanicilar(id)
