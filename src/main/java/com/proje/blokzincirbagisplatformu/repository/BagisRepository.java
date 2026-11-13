@@ -5,6 +5,7 @@ import com.proje.blokzincirbagisplatformu.model.Bagis;
 import com.proje.blokzincirbagisplatformu.model.enums.BagisDurumu;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,33 +13,46 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BagisRepository extends JpaRepository<Bagis, Long> {
 
+    // ID ile bağış getir
+    @Override
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
+    Optional<Bagis> findById(Long id);
+
     // Kullanıcının yaptığı bağışları listeleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByBagisci_Id(Long bagisciId, Pageable pageable);
 
     // Kampanyaya ait bağışları listeleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByKampanya_Id(Long kampanyaId, Pageable pageable);
 
     // Bağış durumuna göre listeleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByDurum(BagisDurumu durum, Pageable pageable);
 
     // Kullanıcı ve bağış durumuna göre filtreleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByBagisci_IdAndDurum(
             Long bagisciId,
             BagisDurumu durum,
             Pageable pageable);
 
     // Kampanya ve bağış durumuna göre filtreleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     List<Bagis> findByKampanya_IdAndDurum(
             Long kampanyaId,
             BagisDurumu durum);
 
     // Belirli cüzdandan yapılan bağışlar
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByCuzdan_Id(Long cuzdanId, Pageable pageable);
 
     // Tarih aralığına göre bağışları listeleme
+    @EntityGraph(attributePaths = {"kampanya", "bagisci", "cuzdan"})
     Page<Bagis> findByOlusturmaTarihiBetween(
             LocalDateTime baslangic,
             LocalDateTime bitis,
@@ -79,7 +93,8 @@ public interface BagisRepository extends JpaRepository<Bagis, Long> {
 
     // Kullanıcının belirli kampanyaya bağış yapıp yapmadığı
     boolean existsByBagisci_IdAndKampanya_Id(
-            Long bagisciId, Long kampanyaId);
+            Long bagisciId,
+            Long kampanyaId);
 
     // Belirli kampanyadaki bağış sayısı
     long countByKampanya_Id(Long kampanyaId);
@@ -87,4 +102,3 @@ public interface BagisRepository extends JpaRepository<Bagis, Long> {
     // Belirli kullanıcının bağış sayısı
     long countByBagisci_Id(Long bagisciId);
 }
-

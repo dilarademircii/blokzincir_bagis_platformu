@@ -30,3 +30,4 @@ jwt:
 blockchain:
   rpc-url: ${BLOCKCHAIN_RPC_URL}
   contract-address: "0x1E857D23Af68ec39a39b3336f071AA5967A6724d"
+  private-key: ${BLOCKCHAIN_PRIVATE_KEY:}

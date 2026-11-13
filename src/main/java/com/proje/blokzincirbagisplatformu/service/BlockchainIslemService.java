@@ -59,4 +59,5 @@ public interface BlockchainIslemService extends TemelService<BlockchainIslem> {
 
     /** Ağdaki belirli durumdaki işlem sayısı */
     long chainIdVeDurumSayisi(Long chainId, BlockchainIslemDurumu durum);
+
 }

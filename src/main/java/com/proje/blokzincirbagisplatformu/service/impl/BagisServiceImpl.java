@@ -1,6 +1,8 @@
+
 package com.proje.blokzincirbagisplatformu.service.impl;
 
 import com.proje.blokzincirbagisplatformu.dto.request.BagisRequest;
+import com.proje.blokzincirbagisplatformu.exception.EntityNotFoundException;
 import com.proje.blokzincirbagisplatformu.model.Bagis;
 import com.proje.blokzincirbagisplatformu.model.BlockchainIslem;
 import com.proje.blokzincirbagisplatformu.model.Cuzdan;
@@ -12,11 +14,14 @@ import com.proje.blokzincirbagisplatformu.model.enums.BlockchainIslemTuru;
 import com.proje.blokzincirbagisplatformu.model.enums.CuzdanDurumu;
 import com.proje.blokzincirbagisplatformu.model.enums.HesapDurumu;
 import com.proje.blokzincirbagisplatformu.model.enums.KampanyaDurumu;
-import com.proje.blokzincirbagisplatformu.repository.*;
+import com.proje.blokzincirbagisplatformu.repository.BagisRepository;
+import com.proje.blokzincirbagisplatformu.repository.BlockchainIslemRepository;
+import com.proje.blokzincirbagisplatformu.repository.CuzdanRepository;
+import com.proje.blokzincirbagisplatformu.repository.KampanyaRepository;
+import com.proje.blokzincirbagisplatformu.repository.KullaniciRepository;
 import com.proje.blokzincirbagisplatformu.service.BagisService;
 import com.proje.blokzincirbagisplatformu.service.BagisSozlesmesiService;
-
-import jakarta.persistence.EntityNotFoundException;
+import com.proje.blokzincirbagisplatformu.service.impl.TemelServiceImpl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,12 +31,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import org.web3j.abi.FunctionEncoder;
-import org.web3j.abi.datatypes.Function;
-import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.Transaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.abi.EventEncoder;
+import org.web3j.abi.FunctionEncoder;
+import org.web3j.abi.FunctionReturnDecoder;
+import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.Event;
+import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Type;
+import org.web3j.abi.datatypes.generated.Uint256;
+import org.web3j.abi.TypeReference;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -39,6 +51,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -58,6 +71,17 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
 
     @Autowired
     private Web3j web3j;
+
+    // Solidity sözleşmesindeki BagisYapildi event tanımı
+    private static final Event BAGIS_YAPILDI_EVENT = new Event(
+            "BagisYapildi",
+            Arrays.asList(
+                    new TypeReference<Uint256>(true) {},
+                    new TypeReference<Address>(true) {},
+                    new TypeReference<Uint256>() {},
+                    new TypeReference<Uint256>() {}
+            )
+    );
 
     public BagisServiceImpl(
             BagisRepository bagisRepository,
@@ -152,14 +176,23 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
         }
 
         Bagis bagis = new Bagis();
+
         bagis.setTutar(request.tutar());
         bagis.setParaBirimi(kampanya.getParaBirimi());
         bagis.setKampanya(kampanya);
         bagis.setBagisci(bagisci);
         bagis.setCuzdan(cuzdan);
+
+        // Blockchain işlemi henüz doğrulanmadı.
         bagis.setDurum(BagisDurumu.BEKLEMEDE);
 
-        return bagisRepository.save(bagis);
+        Bagis kaydedilenBagis = bagisRepository.save(bagis);
+
+        // İlişkili verileri EntityGraph ile yeniden yükle.
+        return bagisRepository.findById(kaydedilenBagis.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Bağış kaydı oluşturulamadı."
+                ));
     }
 
     @Override
@@ -170,6 +203,24 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
     ) {
 
         try {
+
+            // Gelen bilgilerin biçim kontrolü
+            if (transactionHash == null
+                    || !transactionHash.matches("0x[0-9a-fA-F]{64}")) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Geçersiz transaction hash."
+                );
+            }
+
+            if (cuzdanAdresi == null
+                    || !cuzdanAdresi.matches("0x[0-9a-fA-F]{40}")) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Geçersiz cüzdan adresi."
+                );
+            }
+
             Bagis bagis = bagisRepository.findById(bagisId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
@@ -207,6 +258,7 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
+            // Ethereum ağ kontrolü
             BigInteger agId = bagisSozlesmesiService.agIdGetir();
 
             if (!agId.equals(BigInteger.valueOf(11155111))) {
@@ -216,6 +268,7 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
+            // Transaction makbuzunu getir
             TransactionReceipt makbuz =
                     bagisSozlesmesiService.islemMakbuzuGetir(
                             transactionHash
@@ -235,6 +288,23 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
+            if (makbuz.getBlockNumber() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Blockchain blok numarası alınamadı."
+                );
+            }
+
+            // Sözleşme adresini işlem kontrolünden önce getir
+            String sozlesmeAdresi =
+                    bagisSozlesmesiService.getContractAddress();
+
+            System.out.println("RPC CHAIN ID: "
+                    + web3j.ethChainId().send().getChainId());
+
+            System.out.println("TRANSACTION HASH: " + transactionHash);
+
+            // Transaction bilgilerini getir
             Transaction islem = web3j
                     .ethGetTransactionByHash(transactionHash)
                     .send()
@@ -244,9 +314,10 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                             "Blockchain işlemi bulunamadı."
                     ));
 
-            String sozlesmeAdresi =
-                    bagisSozlesmesiService.getContractAddress();
+            System.out.println("İŞLEM TO: " + islem.getTo());
+            System.out.println("BEKLENEN SÖZLEŞME: " + sozlesmeAdresi);
 
+            // İşlem doğru akıllı sözleşmeye mi gönderilmiş?
             if (islem.getTo() == null
                     || !islem.getTo().equalsIgnoreCase(sozlesmeAdresi)) {
                 throw new ResponseStatusException(
@@ -255,7 +326,9 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
-            if (!islem.getFrom().equalsIgnoreCase(cuzdanAdresi)) {
+            // İşlemi gönderen cüzdan kontrolü
+            if (islem.getFrom() == null
+                    || !islem.getFrom().equalsIgnoreCase(cuzdanAdresi)) {
                 throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "İşlemi gönderen cüzdan eşleşmiyor."
@@ -265,6 +338,7 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
             BigInteger kampanyaId =
                     BigInteger.valueOf(bagis.getKampanya().getId());
 
+            // İşlemdeki fonksiyon ve kampanya ID kontrolü
             Function fonksiyon = new Function(
                     "bagisYap",
                     Arrays.asList(new Uint256(kampanyaId)),
@@ -280,6 +354,7 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
+            // Gönderilen ETH tutarını Wei üzerinden kontrol et
             BigInteger islemDegeri = islem.getValue();
 
             if (islemDegeri == null) {
@@ -290,6 +365,7 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
             }
 
             BigInteger gonderilenWei = islemDegeri;
+
             BigInteger beklenenWei = bagis.getTutar()
                     .multiply(new BigDecimal("1000000000000000000"))
                     .toBigIntegerExact();
@@ -301,6 +377,16 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
                 );
             }
 
+            // Solidity BagisYapildi event kontrolü
+            bagisEventiniDogrula(
+                    makbuz,
+                    sozlesmeAdresi,
+                    kampanyaId,
+                    cuzdanAdresi,
+                    beklenenWei
+            );
+
+            // Blockchain işlem kaydını oluştur
             BlockchainIslem blockchainIslem = new BlockchainIslem();
 
             blockchainIslem.setIslemTuru(BlockchainIslemTuru.BAGIS);
@@ -318,19 +404,113 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
 
             blockchainIslemRepository.save(blockchainIslem);
 
+            // Blockchain doğrulaması başarılı olduğu için bağışı onayla.
             bagis.setDurum(BagisDurumu.BASARILI);
 
-            return bagisRepository.save(bagis);
+            Bagis kaydedilenBagis = bagisRepository.save(bagis);
+
+            // İlişkili verileri EntityGraph ile yeniden yükle.
+            return bagisRepository.findById(kaydedilenBagis.getId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Doğrulanan bağış kaydı bulunamadı."
+                    ));
 
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+                    HttpStatus.BAD_GATEWAY,
                     "Blockchain bağış doğrulama hatası: " + e.getMessage(),
                     e
             );
         }
+    }
+
+    // BagisYapildi event verilerini doğrular
+    private void bagisEventiniDogrula(
+            TransactionReceipt makbuz,
+            String sozlesmeAdresi,
+            BigInteger beklenenKampanyaId,
+            String beklenenBagisciAdresi,
+            BigInteger beklenenWei
+    ) {
+
+        String eventTopic = EventEncoder.encode(BAGIS_YAPILDI_EVENT);
+
+        String kampanyaTopic = "0x"
+                + String.format("%064x", beklenenKampanyaId);
+
+        BigInteger bagisciSayisalAdres = new BigInteger(
+                beklenenBagisciAdresi.substring(2),
+                16
+        );
+
+        String bagisciTopic = "0x"
+                + String.format("%064x", bagisciSayisalAdres);
+
+        for (Log log : makbuz.getLogs()) {
+
+            // Event doğru sözleşmeden mi gelmiş?
+            if (log.getAddress() == null
+                    || !log.getAddress().equalsIgnoreCase(sozlesmeAdresi)) {
+                continue;
+            }
+
+            List<String> topics = log.getTopics();
+
+            if (topics == null || topics.size() != 3) {
+                continue;
+            }
+
+            // Event imzası kontrolü
+            if (!topics.get(0).equalsIgnoreCase(eventTopic)) {
+                continue;
+            }
+
+            // Kampanya ID kontrolü
+            if (!topics.get(1).equalsIgnoreCase(kampanyaTopic)) {
+                continue;
+            }
+
+            // Bağışçı cüzdan adresi kontrolü
+            if (!topics.get(2).equalsIgnoreCase(bagisciTopic)) {
+                continue;
+            }
+
+            // Event'in indexed olmayan alanlarını çöz
+            List<Type> eventVerileri = FunctionReturnDecoder.decode(
+                    log.getData(),
+                    BAGIS_YAPILDI_EVENT.getNonIndexedParameters()
+            );
+
+            if (eventVerileri.size() != 2) {
+                continue;
+            }
+
+            BigInteger eventTutari =
+                    ((Uint256) eventVerileri.get(0)).getValue();
+
+            BigInteger eventZamani =
+                    ((Uint256) eventVerileri.get(1)).getValue();
+
+            // Event içindeki ETH tutarı kontrolü
+            if (!eventTutari.equals(beklenenWei)) {
+                continue;
+            }
+
+            // Event zaman damgası kontrolü
+            if (eventZamani.signum() <= 0) {
+                continue;
+            }
+
+            // Bütün kontroller başarılı
+            return;
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Blockchain işleminde geçerli BagisYapildi event kaydı bulunamadı."
+        );
     }
 
     @Override
@@ -408,6 +588,16 @@ public class BagisServiceImpl extends TemelServiceImpl<Bagis>
     public boolean blockchainIslemiVarMi(Long bagisId) {
         bagisGetir(bagisId);
         return bagisRepository.blockchainIslemiVarMi(bagisId);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> transactionHashGetir(Long bagisId) {
+        return blockchainIslemRepository
+                .findFirstByBagis_IdAndDurumOrderByOnaylanmaTarihiDesc(
+                        bagisId,
+                        BlockchainIslemDurumu.ONAYLANDI
+                )
+                .map(BlockchainIslem::getTransactionHash);
     }
 
     @Override

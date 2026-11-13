@@ -129,4 +129,5 @@ public class BlockchainIslemServiceImpl extends TemelServiceImpl<BlockchainIslem
         return blockchainIslemRepository.findById(islemId)
                 .orElseThrow(() -> new EntityNotFoundException("Blockchain İşlemi", islemId));
     }
+
 }

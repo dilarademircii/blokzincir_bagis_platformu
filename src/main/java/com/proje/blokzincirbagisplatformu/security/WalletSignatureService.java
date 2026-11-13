@@ -140,9 +140,10 @@ public class WalletSignatureService {
 
             return true;
 
-        } catch (Exception e) {
-            return false;
-        }
+        }catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
     }
 
     // MetaMask imzasını R, S ve V parçalarına ayırır.

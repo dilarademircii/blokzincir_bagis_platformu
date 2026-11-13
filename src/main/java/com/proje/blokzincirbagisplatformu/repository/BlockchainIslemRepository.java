@@ -61,7 +61,12 @@ public interface BlockchainIslemRepository
             LocalDateTime baslangic,
             LocalDateTime bitis,
             Pageable pageable);
-
+    // Bağışın onaylanmış blockchain işlemini getir
+    Optional<BlockchainIslem>
+    findFirstByBagis_IdAndDurumOrderByOnaylanmaTarihiDesc(
+            Long bagisId,
+            BlockchainIslemDurumu durum
+    );
     // Belirli ağda ve durumda bekleyen işlemleri getirme
     @Query("""
         SELECT bi FROM BlockchainIslem bi
@@ -93,4 +98,5 @@ public interface BlockchainIslemRepository
     // Ağdaki belirli durumdaki işlem sayısı
     long countByChainIdAndDurum(
             Long chainId, BlockchainIslemDurumu durum);
+
 }

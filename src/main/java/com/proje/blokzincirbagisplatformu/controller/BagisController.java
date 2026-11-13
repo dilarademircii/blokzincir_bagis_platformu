@@ -16,7 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/bagislar")
@@ -48,7 +47,7 @@ public class BagisController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(bagisMapper.entityToResponse(bagis));
+                .body(responseOlustur(bagis));
     }
 
     // ID ile bağış getirme
@@ -57,7 +56,7 @@ public class BagisController {
             @PathVariable Long id
     ) {
         return bagisService.idIleGetir(id)
-                .map(bagisMapper::entityToResponse)
+                .map(this::responseOlustur)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -76,7 +75,7 @@ public class BagisController {
                         cuzdanAdresi,
                         PageRequest.of(sayfa, boyut)
                 )
-                .map(bagisMapper::entityToResponse);
+                .map(this::responseOlustur);
 
         return ResponseEntity.ok(response);
     }
@@ -93,7 +92,7 @@ public class BagisController {
                         kampanyaId,
                         PageRequest.of(sayfa, boyut)
                 )
-                .map(bagisMapper::entityToResponse);
+                .map(this::responseOlustur);
 
         return ResponseEntity.ok(response);
     }
@@ -110,7 +109,7 @@ public class BagisController {
                         durum,
                         PageRequest.of(sayfa, boyut)
                 )
-                .map(bagisMapper::entityToResponse);
+                .map(this::responseOlustur);
 
         return ResponseEntity.ok(response);
     }
@@ -170,6 +169,49 @@ public class BagisController {
     ) {
         return ResponseEntity.ok(
                 bagisService.blockchainIslemiVarMi(id)
+        );
+    }
+
+    // Blockchain transaction hash ile bağış doğrulama
+    @PostMapping("/{id}/blockchain-dogrula")
+    public ResponseEntity<BagisResponse> blockchainBagisiniDogrula(
+            @PathVariable Long id,
+            @RequestParam String transactionHash,
+            Authentication authentication
+    ) {
+        String cuzdanAdresi = authentication.getPrincipal().toString();
+
+        Bagis bagis = bagisService.blockchainBagisiniDogrula(
+                id,
+                transactionHash,
+                cuzdanAdresi
+        );
+
+        return ResponseEntity.ok(responseOlustur(bagis));
+    }
+
+    // Bağış bilgilerini ve blockchain transaction hash değerini response'a ekle
+    private BagisResponse responseOlustur(Bagis bagis) {
+
+        BagisResponse response = bagisMapper.entityToResponse(bagis);
+
+        String transactionHash = bagisService
+                .transactionHashGetir(bagis.getId())
+                .orElse(null);
+
+        return new BagisResponse(
+                response.id(),
+                response.tutar(),
+                response.paraBirimi(),
+                response.durum(),
+                response.kampanyaId(),
+                response.kampanyaBasligi(),
+                response.bagisciId(),
+                response.bagisciAdSoyad(),
+                response.cuzdanId(),
+                response.cuzdanAdresi(),
+                transactionHash,
+                response.olusturmaTarihi()
         );
     }
 }

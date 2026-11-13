@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import java.util.Optional;
+
 public interface BagisService extends TemelService<Bagis> {
 
     Bagis bagisOlustur(String cuzdanAdresi, BagisRequest request);
@@ -50,6 +52,7 @@ public interface BagisService extends TemelService<Bagis> {
     );
 
     boolean blockchainIslemiVarMi(Long bagisId);
+    Optional<String> transactionHashGetir(Long bagisId);
 
     boolean bagisVarMi(Long bagisciId, Long kampanyaId);
 
